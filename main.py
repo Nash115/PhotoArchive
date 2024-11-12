@@ -105,7 +105,7 @@ def get_photo_destinations(mode:str) -> list[dict]:
                     "creation_date": datetime.datetime.fromtimestamp(os.path.getctime("Input/"+f)).strftime("%Y-%m-%d"),
                     "size": f"{os.path.getsize("Input/"+f)} bytes"
                 }
-                for f in os.listdir("Input") if os.path.isfile(f)
+                for f in os.listdir("Input/") if os.path.isfile("Input/"+f)
             ]
         else:
             return [
@@ -115,7 +115,7 @@ def get_photo_destinations(mode:str) -> list[dict]:
                     "creation_date": datetime.datetime.fromtimestamp(os.path.getctime("Input/"+f)).strftime("%Y-%m-%d"),
                     "size": f"{os.path.getsize("Input/"+f)} bytes"
                 }
-                for f in os.listdir("Input") if os.path.isfile(f)
+                for f in os.listdir("Input/") if os.path.isfile("Input/"+f)
             ]
 create_folder("Archive")
 create_folder("Input")
@@ -157,6 +157,7 @@ while not(cmd in STOP_COMMANDS):
         else:
             photos_destination = input("Library name (or 'AUTO') : ")
             destinations = get_photo_destinations(photos_destination)
+            print(f"Photos to load : ({len(destinations)})")
             print(tabulate(destinations, headers="keys", tablefmt="fancy_grid"))
             if input("Do you want to proceed? (y/n) : ").lower() == "y":
                 for photo in destinations:
