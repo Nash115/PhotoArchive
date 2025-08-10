@@ -1,10 +1,20 @@
 import os
 import json
 import datetime
-
 from tabulate import tabulate
+from dotenv import load_dotenv
 
-print("👋 Welcome to the Photo archiver program! Type 'help' to see the list of available commands.")
+load_dotenv()
+
+ARCHIVE_PATH = os.getenv("ARCHIVE_PATH", None)
+
+if ARCHIVE_PATH is None:
+    print("No archive path specified. Please set the ARCHIVE_PATH environment variable.")
+    exit(1)
+
+if not os.path.exists(ARCHIVE_PATH):
+    print(f"⚠️ WARNING: The archive path '{ARCHIVE_PATH}' does not exist.")
+    exit(1)
 
 def create_folder(folder_name:str) -> None:
     """Create a folder with the given name if it does not exist.
@@ -26,13 +36,34 @@ def create_library(library_name:str) -> None:
     library_name : str
         The name of the library to be created.
     """
-    create_folder("Archive/" + library_name)
+    create_folder(os.path.join(ARCHIVE_PATH, library_name))
     # Create the config file into the library folder
-    with open(f"Archive/{library_name}/config.json", "w") as file:
+    with open(os.path.join(ARCHIVE_PATH, library_name, "config.json"), "w") as file:
         json.dump({"name": library_name, "file_extensions":[]}, file, indent=4)
 
 
-def load_librries() -> list[dict]:
+def count_files_in_dirs(path: str) -> int:
+    """Count the number of files in the given directory and its subdirectories.
+
+    Parameters
+    ----------
+    path : str
+        The path to the directory to search.
+
+    Returns
+    -------
+    int
+        The number of files found.
+    """
+    IMAGES_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".nef", ".tiff", ".cr2", ".cr3", ".heic", ".webp"]
+    count = 0
+    for root, dirs, files in os.walk(path):
+        # Exclude certain files
+        files = [f for f in files if f.lower().endswith(tuple(IMAGES_EXTENSIONS))]
+        count += len(files)
+    return count
+
+def load_libraries() -> list[dict]:
     """Return the list of libraries.
 
     Returns
@@ -41,19 +72,21 @@ def load_librries() -> list[dict]:
         The list of libraries.
     """
     libraries = []
-    for library in os.listdir("Archive"):
-        if os.path.isdir(f"Archive/{library}"):
-            if not(os.path.exists(f"Archive/{library}/config.json")):
+    for library in os.listdir(ARCHIVE_PATH):
+        if os.path.isdir(os.path.join(ARCHIVE_PATH, library)):
+            if not(os.path.exists(os.path.join(ARCHIVE_PATH, library, "config.json"))):
                 print(f"Config file not found for library {library}. Recreating it...")
                 create_library(library)
-            with open(f"Archive/{library}/config.json", "r") as file:
-                libraries.append(json.load(file))
+            with open(os.path.join(ARCHIVE_PATH, library, "config.json"), "r") as file:
+                json_data = json.load(file)
+                json_data["photos"] = count_files_in_dirs(os.path.join(ARCHIVE_PATH, library))
+                libraries.append(json_data)
     return libraries
 
 
 def display_libraries() -> None:
     """Display the list of libraries."""
-    libraries = load_librries()
+    libraries = load_libraries()
     print(tabulate(libraries, headers="keys", tablefmt="fancy_grid"))
 
 
@@ -71,10 +104,10 @@ def get_photo_destinations(mode:str) -> list[dict]:
         The list of photo destinations.
     """
     if mode == "AUTO":
-        LIBRARIES = load_librries()
+        LIBRARIES = load_libraries()
         l = []
-        for f in os.listdir("Input"):
-            if os.path.isfile("Input/"+f):
+        for f in os.listdir(INPUT_PATH):
+            if os.path.isfile(os.path.join(INPUT_PATH, f)):
                 file_extension = f.split(".")[-1]
                 found = False
                 for library in LIBRARIES:
@@ -82,8 +115,8 @@ def get_photo_destinations(mode:str) -> list[dict]:
                         l.append({
                             "name":f,
                             "destination":library["name"],
-                            "creation_date": datetime.datetime.fromtimestamp(os.path.getctime("Input/"+f)).strftime("%Y-%m-%d"),
-                            "size": f"{os.path.getsize("Input/"+f)} bytes"
+                            "creation_date": datetime.datetime.fromtimestamp(os.path.getctime(os.path.join(INPUT_PATH, f))).strftime("%Y-%m-%d"),
+                            "size": f"{os.path.getsize(os.path.join(INPUT_PATH, f))} bytes"
                         })
                         found = True
                         break
@@ -91,46 +124,48 @@ def get_photo_destinations(mode:str) -> list[dict]:
                     l.append({
                             "name":f,
                             "destination":"?",
-                            "creation_date": datetime.datetime.fromtimestamp(os.path.getctime("Input/"+f)).strftime("%Y-%m-%d"),
-                            "size": f"{os.path.getsize("Input/"+f)} bytes"
+                            "creation_date": datetime.datetime.fromtimestamp(os.path.getctime(os.path.join(INPUT_PATH, f))).strftime("%Y-%m-%d"),
+                            "size": f"{os.path.getsize(os.path.join(INPUT_PATH, f))} bytes"
                     })
         return l
     else:
-        if not(os.path.exists(f"Archive/{mode}")):
+        if not(os.path.exists(os.path.join(ARCHIVE_PATH, mode))):
             print(f"Library {mode} not found.")
             return [
                 {
                     "name":f,
                     "destination":"?",
-                    "creation_date": datetime.datetime.fromtimestamp(os.path.getctime("Input/"+f)).strftime("%Y-%m-%d"),
-                    "size": f"{os.path.getsize("Input/"+f)} bytes"
+                    "creation_date": datetime.datetime.fromtimestamp(os.path.getctime(os.path.join(INPUT_PATH, f))).strftime("%Y-%m-%d"),
+                    "size": f"{os.path.getsize(os.path.join(INPUT_PATH, f))} bytes"
                 }
-                for f in os.listdir("Input/") if os.path.isfile("Input/"+f)
+                for f in os.listdir(INPUT_PATH) if os.path.isfile(os.path.join(INPUT_PATH, f))
             ]
         else:
             return [
                 {
                     "name":f,
                     "destination":mode,
-                    "creation_date": datetime.datetime.fromtimestamp(os.path.getctime("Input/"+f)).strftime("%Y-%m-%d"),
-                    "size": f"{os.path.getsize("Input/"+f)} bytes"
+                    "creation_date": datetime.datetime.fromtimestamp(os.path.getctime(os.path.join(INPUT_PATH, f))).strftime("%Y-%m-%d"),
+                    "size": f"{os.path.getsize(os.path.join(INPUT_PATH, f))} bytes"
                 }
-                for f in os.listdir("Input/") if os.path.isfile("Input/"+f)
+                for f in os.listdir(INPUT_PATH) if os.path.isfile(os.path.join(INPUT_PATH, f))
             ]
-create_folder("Archive")
-create_folder("Input")
+        
+print("👋 Welcome to the Photo archiver program! Type 'help' to see the list of available commands.")
+
+INPUT_PATH = os.path.join(ARCHIVE_PATH, "### Input ###")
+create_folder(INPUT_PATH)
 
 cmd = ""
 STOP_COMMANDS = ["exit", "quit", "q", "stop", "end", "bye"]
 HELP_COMMANDS = ["help", "h", "?"]
 while not(cmd in STOP_COMMANDS):
-    if os.listdir("Archive") == []: # Check if no library has been created yet
+    if os.listdir(ARCHIVE_PATH) == []: # Check if no library has been created yet
         print("Welcome !")
         print("You don't have any library yet. Let's start by creating one.")
         print("Please enter the name of the library you want to create.")
         library_name = input("Library name: ")
-        create_folder("Archive/" + library_name)
-    
+        create_library(library_name)
 
     cmd = input("Enter a command: ").lower() # Prompt the user to enter a command
 
@@ -143,7 +178,7 @@ while not(cmd in STOP_COMMANDS):
         print("  - exit: Exit the program")
         print("  - list-libraries: Display the list of libraries")
         print("  - create-library: Create a new library")
-        print("  - load: Load all the photos from the 'Input' folder into a library")
+        print("  - load: Load all the photos from the '### Input ###' folder into a library")
     elif cmd == "list-libraries":
         display_libraries()
     elif cmd == "create-library":
@@ -152,8 +187,8 @@ while not(cmd in STOP_COMMANDS):
     elif cmd == "load":
         print("Please enter the name of the library where you want to load the photos.")
         print("You can type 'AUTO' to automatically load the photos into the library with the correspondig file extension.")
-        if len(os.listdir("Input")) == 0:
-            print("No photos found in the 'Input' folder.")
+        if len(os.listdir(INPUT_PATH)) == 0:
+            print("No photos found in the '### Input ###' folder.")
         else:
             photos_destination = input("Library name (or 'AUTO') : ")
             destinations = get_photo_destinations(photos_destination)
@@ -162,9 +197,8 @@ while not(cmd in STOP_COMMANDS):
             if input("Do you want to proceed? (y/n) : ").lower() == "y":
                 for photo in destinations:
                     if not(photo["destination"] == "?"):
-                        if os.path.exists(f"Archive/{photo['destination']}/{photo['creation_date']}") == False:
-                            os.mkdir(f"Archive/{photo['destination']}/{photo['creation_date']}")
-                        os.rename(f"Input/{photo['name']}", f"Archive/{photo['destination']}/{photo['creation_date']}/{photo['name']}")
+                        create_folder(os.path.join(ARCHIVE_PATH, photo["destination"], photo["creation_date"]))
+                        os.rename(os.path.join(INPUT_PATH, photo["name"]), os.path.join(ARCHIVE_PATH, photo["destination"], photo["creation_date"], photo["name"]))
                 print("Photos loaded successfully.")
             else:
                 print("Canceled.")

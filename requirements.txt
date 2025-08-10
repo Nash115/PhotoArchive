@@ -1,1 +1,2 @@
 tabulate
+python-dotenv
