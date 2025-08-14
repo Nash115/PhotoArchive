@@ -11,6 +11,7 @@ load_dotenv()
 
 ARCHIVE_PATH = os.getenv("ARCHIVE_PATH", None)
 INPUT_FOLDER_NAME = os.getenv("INPUT_FOLDER_NAME", "-Input-")
+IMAGES_EXTENSIONS = (".jpg", ".jpeg", ".png", ".gif", ".bmp", ".nef", ".tiff", ".cr2", ".cr3", ".heic", ".webp")
 
 if ARCHIVE_PATH is None:
     print("No archive path specified. Please set the ARCHIVE_PATH environment variable.")
@@ -38,8 +39,9 @@ def create_library(library_name:str) -> None:
 
 def count_files_in_dirs(path: str, files_extensions: list[str]) -> int:
     count = 0
+    lower_exts = tuple(ext.lower() for ext in files_extensions)
     for root, dirs, files in os.walk(path):
-        files = [f for f in files if f.lower().endswith(tuple(files_extensions))]
+        files = [f for f in files if f.lower().endswith(lower_exts)]
         count += len(files)
     return count
 
@@ -48,6 +50,8 @@ def load_libraries() -> list[dict]:
     libraries = []
     for library in os.listdir(ARCHIVE_PATH):
         if os.path.isdir(os.path.join(ARCHIVE_PATH, library)):
+            if library == INPUT_FOLDER_NAME:
+                continue
             if not(os.path.exists(os.path.join(ARCHIVE_PATH, library, "config.json"))):
                 print(f"Config file not found for library {library}. Recreating it...")
                 create_library(library)
@@ -55,7 +59,7 @@ def load_libraries() -> list[dict]:
                 json_data = json.load(file)
                 json_data["photos"] = count_files_in_dirs(
                     os.path.join(ARCHIVE_PATH, library),
-                    [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".nef", ".tiff", ".cr2", ".cr3", ".heic", ".webp"]
+                    IMAGES_EXTENSIONS
                     )
                 json_data["archives"] = count_files_in_dirs(
                     os.path.join(ARCHIVE_PATH, library),
@@ -71,21 +75,22 @@ def display_libraries() -> None:
         l["file_extensions"] = " ".join(l["file_extensions"])
     print(tabulate(libraries, headers="keys", tablefmt="fancy_grid"))
 
-
 def get_photo_destinations(mode:str) -> list[dict]:
     if mode == "AUTO":
         LIBRARIES = load_libraries()
         l = []
         for f in os.listdir(INPUT_PATH):
-            if os.path.isfile(os.path.join(INPUT_PATH, f)):
-                file_extension = f.split(".")[-1]
+            if os.path.isfile(os.path.join(INPUT_PATH, f)) and f.lower().endswith(tuple(ext.lower() for ext in IMAGES_EXTENSIONS)):
+                file_extension = f.split(".")[-1].lower()
                 found = False
                 for library in LIBRARIES:
-                    if file_extension in library["file_extensions"] or library["file_extensions"] == []:
+                    file_exts = library["file_extensions"] if isinstance(library["file_extensions"], list) else library["file_extensions"].split()
+                    file_exts = [ext.lower() for ext in file_exts]
+                    if file_extension in file_exts:
                         l.append({
                             "name":f,
                             "destination":library["name"],
-                            "creation_date": datetime.datetime.fromtimestamp(os.path.getctime(os.path.join(INPUT_PATH, f))).strftime("%Y-%m-%d"),
+                            "creation_date": datetime.datetime.fromtimestamp(os.path.getmtime(os.path.join(INPUT_PATH, f))).strftime("%Y-%m-%d"),
                             "size": f"{os.path.getsize(os.path.join(INPUT_PATH, f))} bytes"
                         })
                         found = True
