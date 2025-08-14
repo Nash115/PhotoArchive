@@ -5,6 +5,7 @@ from tabulate import tabulate
 from dotenv import load_dotenv
 import zipfile
 import shutil
+from progressbar import ProgressBar
 
 load_dotenv()
 
@@ -151,8 +152,8 @@ def compress_library_date(library_name:str, date_folder:str) -> int:
     
     n = compress_folder(source_path, destination_path)
     if n == 1:
-        print(f"Compressed successfully")
-        print(f"Removing source directory {source_path}...")
+        # print(f"Compressed successfully")
+        # print(f"Removing source directory {source_path}...")
         shutil.rmtree(source_path)
     else:
         print(f"Failed to compress {source_path}")
@@ -167,8 +168,8 @@ def decompress_library_date(library_name:str, date_archive:str) -> int:
     destination_path = os.path.join(ARCHIVE_PATH, library_name, date_archive.replace(".zip", ""))
     n = decompress_zip(source_path, destination_path)
     if n == 1:
-        print(f"Decompressed successfully")
-        print(f"Removing archive {source_path}...")
+        # print(f"Decompressed successfully")
+        # print(f"Removing archive {source_path}...")
         os.remove(source_path)
     else:
         print(f"Failed to decompress {source_path}")
@@ -191,18 +192,39 @@ def archiveAction(mode:str, callback) -> int:
 
     libraries = os.listdir(ARCHIVE_PATH)
 
+    count = 0
+
     for lib in libraries:
         if os.path.isdir(os.path.join(ARCHIVE_PATH, lib)) and (lib == library_name or library_name == "*"):
             dates = os.listdir(os.path.join(ARCHIVE_PATH, lib))
             for date in dates:
                 if mode == "compress":
                     if os.path.isdir(os.path.join(ARCHIVE_PATH, lib, date)) and (date_folder == "*" or date_folder in date):
-                        print(f"{mode.capitalize()}ing {date} from library '{lib}'...")
-                        n += callback(lib, date)
+                        count += 1
                 elif mode == "decompress":
                     if date.endswith(".zip") and (date_folder == "*" or date_folder in date):
-                        print(f"{mode.capitalize()}ing {date} from library '{lib}'...")
+                        count += 1
+                else:
+                    print(f"Unknown mode '{mode}'")
+
+    progressbar = ProgressBar(count)
+
+    progressbar.update(0)
+
+    for lib in libraries:
+        if os.path.isdir(os.path.join(ARCHIVE_PATH, lib)) and (lib == library_name or library_name == "*"):
+            dates = os.listdir(os.path.join(ARCHIVE_PATH, lib))
+            for date in dates:
+                if mode == "compress":
+                    if os.path.isdir(os.path.join(ARCHIVE_PATH, lib, date)) and (date_folder == "*" or date_folder in date):
+                        # print(f"{mode.capitalize()}ing {date} from library '{lib}'...")
                         n += callback(lib, date)
+                        progressbar.update(n)
+                elif mode == "decompress":
+                    if date.endswith(".zip") and (date_folder == "*" or date_folder in date):
+                        # print(f"{mode.capitalize()}ing {date} from library '{lib}'...")
+                        n += callback(lib, date)
+                        progressbar.update(n)
                 else:
                     print(f"Unknown mode '{mode}'")
     return n
