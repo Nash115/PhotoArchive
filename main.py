@@ -1,33 +1,9 @@
 import os
-from dotenv import load_dotenv
 from tabulate import tabulate
 import modules.utils as utils
 import modules.archive as archive
 import modules.library as library
-
-load_dotenv()
-
-ARCHIVE_PATH = os.getenv("ARCHIVE_PATH", None)
-INPUT_FOLDER_NAME = os.getenv("INPUT_FOLDER_NAME", "-Input-")
-IMAGES_EXTENSIONS = (".jpg", ".jpeg", ".png", ".gif", ".bmp", ".nef", ".tiff", ".cr2", ".cr3", ".heic", ".webp")
-
-if ARCHIVE_PATH is None:
-    print("No archive path specified. Please set the ARCHIVE_PATH environment variable.")
-    exit(1)
-
-if not os.path.exists(ARCHIVE_PATH):
-    print(f"⚠️ WARNING: The archive path '{ARCHIVE_PATH}' does not exist.")
-    exit(1)
-
-INPUT_PATH = os.path.join(ARCHIVE_PATH, INPUT_FOLDER_NAME)
-utils.create_folder(INPUT_PATH)
-
-# Initialize module constants
-library.ARCHIVE_PATH = ARCHIVE_PATH
-library.INPUT_FOLDER_NAME = INPUT_FOLDER_NAME
-library.IMAGES_EXTENSIONS = IMAGES_EXTENSIONS
-library.INPUT_PATH = INPUT_PATH
-archive.ARCHIVE_PATH = ARCHIVE_PATH
+import modules.consts as consts
 
 print("👋 Welcome to the Photo archiver program! Type 'help' to see the list of available commands.")
 
@@ -35,7 +11,7 @@ cmd = ""
 STOP_COMMANDS = ["exit", "quit", "q", "stop", "end", "bye"]
 HELP_COMMANDS = ["help", "h", "?"]
 while not(cmd in STOP_COMMANDS):
-    if os.listdir(ARCHIVE_PATH) == []:
+    if os.listdir(consts.ARCHIVE_PATH) == []:
         print("Welcome !")
         print("You don't have any library yet. Let's start by creating one.")
         print("Please enter the name of the library you want to create.")
@@ -53,7 +29,7 @@ while not(cmd in STOP_COMMANDS):
         print("\t- exit: Exit the program")
         print("\t- list: Display the list of libraries")
         print("\t- create: Create a new library")
-        print(f"\t- load: Load all the photos from the '{INPUT_FOLDER_NAME}' folder into a library")
+        print(f"\t- load: Load all the photos from the '{consts.INPUT_FOLDER_NAME}' folder into a library")
         print("\t- archive: Compress or decompress a library / a date")
     elif cmd == "list":
         library.display_libraries()
@@ -63,8 +39,8 @@ while not(cmd in STOP_COMMANDS):
     elif cmd == "load":
         print("Please enter the name of the library where you want to load the photos.")
         print("You can type 'AUTO' to automatically load the photos into the library with the corresponding file extension.")
-        if len(os.listdir(INPUT_PATH)) == 0:
-            print(f"No photos found in the '{INPUT_FOLDER_NAME}' folder.")
+        if len(os.listdir(consts.INPUT_PATH)) == 0:
+            print(f"No photos found in the '{consts.INPUT_FOLDER_NAME}' folder.")
         else:
             photos_destination = input("Library name (or 'AUTO') : ")
             destinations = library.get_photo_destinations(photos_destination)
@@ -73,11 +49,11 @@ while not(cmd in STOP_COMMANDS):
             if input("Do you want to proceed? (y/n) : ").lower() == "y":
                 for photo in destinations:
                     if not(photo["destination"] == "?"):
-                        utils.create_folder(os.path.join(ARCHIVE_PATH, photo["destination"], photo["creation_date"]))
-                        if os.path.exists(os.path.join(ARCHIVE_PATH, photo["destination"], photo["creation_date"], photo["name"])):
+                        utils.create_folder(os.path.join(consts.ARCHIVE_PATH, photo["destination"], photo["creation_date"]))
+                        if os.path.exists(os.path.join(consts.ARCHIVE_PATH, photo["destination"], photo["creation_date"], photo["name"])):
                             print(f"⚠️ WARNING: The file {photo['name']} already exists in the destination folder. ({photo['destination']}/{photo['creation_date']}) Skipping...")
                         else:
-                            os.rename(os.path.join(INPUT_PATH, photo["name"]), os.path.join(ARCHIVE_PATH, photo["destination"], photo["creation_date"], photo["name"]))
+                            os.rename(os.path.join(consts.INPUT_PATH, photo["name"]), os.path.join(consts.ARCHIVE_PATH, photo["destination"], photo["creation_date"], photo["name"]))
                 print("Photos loaded successfully.")
             else:
                 print("Canceled.")

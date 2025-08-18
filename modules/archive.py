@@ -2,8 +2,7 @@ import zipfile
 import os
 import shutil
 from modules.progressbar import ProgressBar
-
-ARCHIVE_PATH = None
+import modules.consts as consts
 
 def compress_folder(src, zip_dest):
     with zipfile.ZipFile(zip_dest, 'w', compression=zipfile.ZIP_DEFLATED, compresslevel=9) as zipf:
@@ -24,7 +23,7 @@ def decompress_zip(zip_src, dest_folder):
         return 0
 
 def compress_library_date(library_name:str, date_folder:str) -> int:
-    source_path = os.path.join(ARCHIVE_PATH, library_name, date_folder)
+    source_path = os.path.join(consts.ARCHIVE_PATH, library_name, date_folder)
     if not os.path.exists(source_path):
         print(f"Source path '{source_path}' does not exist or is incorrect.")
         return 0
@@ -44,12 +43,12 @@ def compress_library_date(library_name:str, date_folder:str) -> int:
     return n
 
 def decompress_library_date(library_name:str, date_archive:str) -> int:
-    source_path = os.path.join(ARCHIVE_PATH, library_name, date_archive)
+    source_path = os.path.join(consts.ARCHIVE_PATH, library_name, date_archive)
     if not os.path.exists(source_path):
         print(f"Source path '{source_path}' does not exist.")
         return 0
 
-    destination_path = os.path.join(ARCHIVE_PATH, library_name, date_archive.replace(".zip", ""))
+    destination_path = os.path.join(consts.ARCHIVE_PATH, library_name, date_archive.replace(".zip", ""))
     n = decompress_zip(source_path, destination_path)
     if n == 1:
         # print(f"Decompressed successfully")
@@ -74,16 +73,16 @@ def archiveAction(mode:str, callback) -> int:
 
     library_name, date_folder = user_input.split("/") if "/" in user_input else (user_input, '*')
 
-    libraries = os.listdir(ARCHIVE_PATH)
+    libraries = os.listdir(consts.ARCHIVE_PATH)
 
     count = 0
 
     for lib in libraries:
-        if os.path.isdir(os.path.join(ARCHIVE_PATH, lib)) and (lib == library_name or library_name == "*"):
-            dates = os.listdir(os.path.join(ARCHIVE_PATH, lib))
+        if os.path.isdir(os.path.join(consts.ARCHIVE_PATH, lib)) and (lib == library_name or library_name == "*"):
+            dates = os.listdir(os.path.join(consts.ARCHIVE_PATH, lib))
             for date in dates:
                 if mode == "compress":
-                    if os.path.isdir(os.path.join(ARCHIVE_PATH, lib, date)) and (date_folder == "*" or date_folder in date):
+                    if os.path.isdir(os.path.join(consts.ARCHIVE_PATH, lib, date)) and (date_folder == "*" or date_folder in date):
                         count += 1
                 elif mode == "decompress":
                     if date.endswith(".zip") and (date_folder == "*" or date_folder in date):
@@ -96,11 +95,11 @@ def archiveAction(mode:str, callback) -> int:
     progressbar.update(0)
 
     for lib in libraries:
-        if os.path.isdir(os.path.join(ARCHIVE_PATH, lib)) and (lib == library_name or library_name == "*"):
-            dates = os.listdir(os.path.join(ARCHIVE_PATH, lib))
+        if os.path.isdir(os.path.join(consts.ARCHIVE_PATH, lib)) and (lib == library_name or library_name == "*"):
+            dates = os.listdir(os.path.join(consts.ARCHIVE_PATH, lib))
             for date in dates:
                 if mode == "compress":
-                    if os.path.isdir(os.path.join(ARCHIVE_PATH, lib, date)) and (date_folder == "*" or date_folder in date):
+                    if os.path.isdir(os.path.join(consts.ARCHIVE_PATH, lib, date)) and (date_folder == "*" or date_folder in date):
                         # print(f"{mode.capitalize()}ing {date} from library '{lib}'...")
                         n += callback(lib, date)
                         progressbar.update(n)
