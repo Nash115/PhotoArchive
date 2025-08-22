@@ -88,3 +88,38 @@ def get_photo_destinations(mode:str) -> list[dict]:
                 }
                 for f in os.listdir(consts.INPUT_PATH) if os.path.isfile(os.path.join(consts.INPUT_PATH, f))
             ]
+
+def get_dates_and_archives_by_lib(library: str):
+    dates_and_archives = {}
+    for lib in os.listdir(consts.ARCHIVE_PATH):
+        if os.path.isdir(os.path.join(consts.ARCHIVE_PATH, lib)) and library == lib:
+            for d in os.listdir(os.path.join(consts.ARCHIVE_PATH, lib)):
+                if os.path.isdir(os.path.join(consts.ARCHIVE_PATH, lib, d)):
+                    dates_and_archives[d] = "dir"
+                elif d.endswith(".zip"):
+                    dates_and_archives[d.replace(".zip", "")] = "zip"
+                else:
+                    dates_and_archives[d] = "unknown"
+    return dates_and_archives
+
+def get_photos_groupped_by_date(library: str, date: str) -> dict:
+    photos = {}
+    for lib in os.listdir(consts.ARCHIVE_PATH):
+        if os.path.isdir(os.path.join(consts.ARCHIVE_PATH, lib)) and library == lib:
+            for d in os.listdir(os.path.join(consts.ARCHIVE_PATH, lib)):
+                if os.path.isdir(os.path.join(consts.ARCHIVE_PATH, lib, d)):
+                    if d == date:
+                        files = [f
+                                 for f in os.listdir(os.path.join(consts.ARCHIVE_PATH, lib, d))
+                                 if os.path.isfile(os.path.join(consts.ARCHIVE_PATH, lib, d, f))
+                                ]
+                        for f in files:
+                            name,ext = f.split(".")
+                            ext = ext.lower()
+                            if photos.get(name) == None:
+                                photos[name] = {
+                                    "ext":[ext]
+                                }
+                            else:
+                                photos[name]['ext'].append(ext)
+    return photos
